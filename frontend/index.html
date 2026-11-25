@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1015">
+  <title>SentiNull — System monitor</title>
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/dashboard.css">
+  <script type="module" src="/src/app.mjs"></script>
+</head>
+<body id="overview">
+  <aside class="sidebar">
+    <a class="brand" href="#overview">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>SentiNull<span class="brand-caption">System monitor</span></span>
+    </a>
+    <nav aria-label="Dashboard">
+      <a href="#overview" aria-current="location"><span class="nav-icon grid-icon" aria-hidden="true"></span> Overview</a>
+      <a href="#compute"><span class="nav-icon chip-icon" aria-hidden="true"></span> Compute</a>
+      <a href="#storage"><span class="nav-icon drive-icon" aria-hidden="true"></span> Storage</a>
+      <a href="#network"><span class="nav-icon network-icon" aria-hidden="true"></span> Network</a>
+      <a href="#sensors"><span class="nav-icon sensor-icon" aria-hidden="true"></span> Sensors</a>
+    </nav>
+    <div class="sidebar-host">
+      <span class="host-icon" aria-hidden="true"></span>
+      <div><strong id="sidebar-host">Local machine</strong><small>Collector host</small></div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <span class="topbar-title">Samples every 2 seconds</span>
+      <div class="topbar-actions">
+        <span class="status" id="status" data-state="starting" role="status">Connecting</span>
+        <button type="button" id="pause" aria-pressed="false"><span class="pause-icon" aria-hidden="true"></span><span id="pause-label">Pause</span></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-heading">
+        <div><h1>System overview</h1><p id="heading-host">Waiting for host information</p></div>
+        <p class="last-sample" id="last-sample">Waiting for the first sample</p>
+      </div>
+
+      <div class="cards" aria-label="Current readings">
+        <article class="panel metric cpu">
+          <div class="metric-label"><span class="metric-icon processor" aria-hidden="true"></span><h2>CPU usage</h2></div>
+          <strong class="metric-value" id="cpu-value">—</strong>
+          <div class="metric-detail" id="cpu-detail">Awaiting data</div>
+          <progress id="cpu-meter" aria-label="CPU usage" max="100" value="0" hidden></progress>
+        </article>
+        <article class="panel metric memory">
+          <div class="metric-label"><span class="metric-icon ram" aria-hidden="true"></span><h2>Memory</h2></div>
+          <strong class="metric-value" id="memory-value">—</strong>
+          <div class="metric-detail" id="memory-detail">Awaiting data</div>
+          <progress id="memory-meter" aria-label="Memory usage" max="100" value="0" hidden></progress>
+        </article>
+        <article class="panel metric gpu">
+          <div class="metric-label"><span class="metric-icon adapter" aria-hidden="true"></span><h2>GPU usage</h2></div>
+          <strong class="metric-value" id="gpu-value">—</strong>
+          <div class="metric-detail" id="gpu-detail">Awaiting data</div>
+          <progress id="gpu-meter" aria-label="Primary GPU usage" max="100" value="0" hidden></progress>
+        </article>
+        <article class="panel metric traffic">
+          <div class="metric-label"><span class="metric-icon signal" aria-hidden="true"></span><h2>Network RX</h2></div>
+          <strong class="metric-value" id="network-value">—</strong>
+          <div class="metric-detail" id="network-detail">Awaiting data</div>
+        </article>
+      </div>
+
+      <div class="overview-grid">
+        <section class="panel chart-panel" aria-labelledby="history-heading">
+          <div class="panel-heading">
+            <div><h2 id="history-heading">Utilization history</h2><p>CPU, RAM, and primary GPU</p></div>
+            <label class="range-label">
+              <span class="sr-only">History time range</span>
+              <select id="range">
+                <option value="60">Last minute</option>
+                <option value="300" selected>Last 5 minutes</option>
+                <option value="900">Last 15 minutes</option>
+              </select>
+            </label>
+          </div>
+          <div class="chart">
+            <canvas id="history" role="img" aria-label="Utilization history. Waiting for samples."></canvas>
+            <p id="chart-empty" class="chart-empty">Waiting for samples</p>
+          </div>
+          <div class="legend" aria-label="Chart series">
+            <button type="button" class="cpu" data-series="cpu" aria-pressed="true"><i aria-hidden="true"></i> CPU</button>
+            <button type="button" class="memory" data-series="memory" aria-pressed="true"><i aria-hidden="true"></i> Memory</button>
+            <button type="button" class="gpu" data-series="gpu" aria-pressed="true"><i aria-hidden="true"></i> GPU</button>
+          </div>
+        </section>
+
+        <section class="panel host-panel" aria-labelledby="host-heading">
+          <div class="panel-heading"><div><h2 id="host-heading">Host information</h2><p>Hardware and operating system</p></div></div>
+          <dl>
+            <div><dt>Hostname</dt><dd id="host-name">—</dd></div>
+            <div><dt>Operating system</dt><dd id="host-os">—</dd></div>
+            <div><dt>Kernel</dt><dd id="host-kernel">—</dd></div>
+            <div><dt>Architecture</dt><dd id="host-architecture">—</dd></div>
+            <div><dt>Processor</dt><dd id="host-cpu">—</dd></div>
+            <div><dt>Uptime</dt><dd id="host-uptime">—</dd></div>
+          </dl>
+        </section>
+      </div>
+
+      <section class="details-section" id="compute" aria-labelledby="compute-heading">
+        <h2 id="compute-heading">Compute</h2>
+        <div class="details-grid">
+          <article class="panel detail-panel">
+            <div class="panel-heading"><div><h3>Logical CPUs</h3><p id="cores-detail">Awaiting data</p></div></div>
+            <div id="cores" class="cores" role="region" aria-label="Per-core readings" tabindex="0"><p class="empty">Waiting for the first sample</p></div>
+          </article>
+          <article class="panel detail-panel">
+            <div class="panel-heading"><div><h3>Graphics adapters</h3><p>Utilization, video memory, and temperature</p></div></div>
+            <div id="gpus"><p class="empty">Waiting for the first sample</p></div>
+            <div class="swap"><span>Swap used</span><strong id="swap">—</strong></div>
+          </article>
+        </div>
+      </section>
+      <section class="details-section" id="storage" aria-labelledby="storage-heading">
+        <h2 id="storage-heading">Storage</h2>
+        <div class="panel table-panel" role="region" aria-label="Storage volumes" tabindex="0">
+          <table><thead><tr><th scope="col">Mount point</th><th scope="col">Used</th><th scope="col">Capacity</th><th scope="col">Utilization</th></tr></thead>
+            <tbody id="volumes"><tr><td colspan="4">Waiting for the first sample</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="details-section" id="network" aria-labelledby="network-heading">
+        <h2 id="network-heading">Network</h2>
+        <div class="panel table-panel" role="region" aria-label="Network interfaces" tabindex="0">
+          <table><thead><tr><th scope="col">Interface</th><th scope="col">Receive rate</th><th scope="col">Send rate</th><th scope="col">Total received</th><th scope="col">Total sent</th></tr></thead>
+            <tbody id="interfaces"><tr><td colspan="5">Waiting for the first sample</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="details-section" id="sensors" aria-labelledby="sensors-heading">
+        <h2 id="sensors-heading">Temperature sensors</h2>
+        <div class="panel table-panel" role="region" aria-label="Sensor readings" tabindex="0">
+          <table><thead><tr><th scope="col">Sensor</th><th scope="col">Temperature</th></tr></thead>
+            <tbody id="temperatures"><tr><td colspan="2">Waiting for the first sample</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

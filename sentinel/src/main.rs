@@ -1,20 +1,62 @@
-use chrono::{Timelike, Utc};
-use cpu_info::CpuInfo;
+mod collect;
+mod output;
+mod snapshot;
 
-fn main() {
-    let now = Utc::now();
-    let seconds = now.second();
-    let minutes = now.minute();
+use std::{
+    io::{self, Write},
+    thread,
+    time::Instant,
+};
 
-    let cpu_info = CpuInfo::new();
-    let cpu_model = cpu_info.model;
-    let cpu_fabricant = cpu_info.fabricant;
-    let cpu_arch = cpu_info.architecture;
+fn main() -> io::Result<()> {
+    match monitor() {
+        Err(error) if error.kind() == io::ErrorKind::BrokenPipe => Ok(()),
+        result => result,
+    }
+}
 
-    println!("Seconds: {}", seconds);
-    println!("Minutes: {}", minutes);
+fn monitor() -> io::Result<()> {
+    let mut json = false;
+    let mut once = false;
+    for argument in std::env::args_os().skip(1) {
+        match argument.to_str() {
+            Some("--json") => json = true,
+            Some("--once") => once = true,
+            Some("--help" | "-h") => {
+                return writeln!(
+                    io::stdout().lock(),
+                    "Usage: sentinel [--json] [--once]\n\n--json  Write one JSON object per line\n--once  Exit after the first sample"
+                );
+            }
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("unknown option: {}", argument.to_string_lossy()),
+                ));
+            }
+        }
+    }
 
-    println!("CPU Model: {}", cpu_model);
-    println!("CPU Fabricant: {:?}", cpu_fabricant);
-    println!("CPU Architecture: {:?}", cpu_arch);
+    let mut collector = collect::Collector::new();
+    if !json {
+        output::terminal::host(&mut io::stdout().lock(), &collector.host)?;
+    }
+
+    let interval = collect::INTERVAL.max(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+    let mut next_sample = Instant::now() + interval;
+    loop {
+        thread::sleep(next_sample.saturating_duration_since(Instant::now()));
+        next_sample = Instant::now() + interval;
+        let snapshot = collector.sample();
+        let mut out = io::stdout().lock();
+        if json {
+            output::json(&mut out, &snapshot)?;
+        } else {
+            output::terminal::sample(&mut out, &snapshot)?;
+        }
+        out.flush()?;
+        if once {
+            return Ok(());
+        }
+    }
 }
